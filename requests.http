@@ -1,0 +1,184 @@
+### Authentication API - Request Examples
+### Use with REST Client extension (vscode-restclient)
+### Or paste directly into Swagger UI
+
+@baseUrl = http://localhost:3000
+@token = your-jwt-token-here
+
+### ==================== HEALTH CHECK ====================
+
+### Health Check
+GET {{baseUrl}}/api/auth/health
+
+### Root endpoint
+GET {{baseUrl}}/
+
+### ==================== AUTHENTICATION ====================
+
+### Register new user
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "john@example.com",
+  "password": "SecurePassword123",
+  "name": "John Doe"
+}
+
+### Register user - minimal
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "jane@example.com",
+  "password": "Password456"
+}
+
+### Register user - validation error (weak password)
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "weak@example.com",
+  "password": "123"
+}
+
+### Register user - duplicate email
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "john@example.com",
+  "password": "AnotherPassword789"
+}
+
+### Login successful
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "john@example.com",
+  "password": "SecurePassword123"
+}
+
+### Login - invalid password
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "john@example.com",
+  "password": "WrongPassword"
+}
+
+### Login - user not found
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "nonexistent@example.com",
+  "password": "SomePassword"
+}
+
+### Login - validation error (invalid email)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "invalid-email",
+  "password": "Password123"
+}
+
+### ==================== USER PROFILE ====================
+
+### Get current user profile
+GET {{baseUrl}}/api/auth/profile
+Authorization: Bearer {{token}}
+
+### Get profile - invalid token
+GET {{baseUrl}}/api/auth/profile
+Authorization: Bearer invalid-token
+
+### Get profile - no token
+GET {{baseUrl}}/api/auth/profile
+
+### Update user profile
+PUT {{baseUrl}}/api/auth/profile
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "John Updated Doe"
+}
+
+### Update profile - empty name
+PUT {{baseUrl}}/api/auth/profile
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": ""
+}
+
+### Update profile - missing name
+PUT {{baseUrl}}/api/auth/profile
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+}
+
+### ==================== PASSWORD MANAGEMENT ====================
+
+### Change password - successful
+POST {{baseUrl}}/api/auth/change-password
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "currentPassword": "SecurePassword123",
+  "newPassword": "NewSecurePassword789"
+}
+
+### Change password - wrong current password
+POST {{baseUrl}}/api/auth/change-password
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "currentPassword": "WrongPassword",
+  "newPassword": "NewPassword123"
+}
+
+### Change password - weak new password
+POST {{baseUrl}}/api/auth/change-password
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "currentPassword": "SecurePassword123",
+  "newPassword": "123"
+}
+
+### Change password - missing current password
+POST {{baseUrl}}/api/auth/change-password
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "newPassword": "NewPassword123"
+}
+
+### Change password - no token
+POST {{baseUrl}}/api/auth/change-password
+Content-Type: application/json
+
+{
+  "currentPassword": "OldPassword",
+  "newPassword": "NewPassword"
+}
+
+### ==================== NOTES ====================
+
+@variable: Replace {{token}} with actual JWT token from login/register response
+@note: Make sure to update {{baseUrl}} if running on different port
+@note: Register a user first to get a token for authenticated endpoints

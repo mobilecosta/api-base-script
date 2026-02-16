@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  auth-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: auth-api-supabase
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=7d
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/dist
+    command: npm run dev
+    restart: unless-stopped
+    networks:
+      - auth-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/auth/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  auth-network:
+    driver: bridge

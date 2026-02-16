@@ -168,9 +168,10 @@ app.use((err: any, req: Request, res: Response) => {
   });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`
+// Start server only when running directly (not during tests)
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`
 ╔═══════════════════════════════════════════════╗
 ║   Authentication API with Supabase            ║
 ╚═══════════════════════════════════════════════╝
@@ -181,6 +182,7 @@ app.listen(PORT, () => {
 
 Environment: ${process.env.NODE_ENV || 'development'}
   `);
-});
+  });
+}
 
 export default app;

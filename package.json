@@ -4,7 +4,7 @@
   "description": "Authentication API with Supabase integration",
   "main": "dist/index.js",
   "engines": {
-    "node": "22.x",
+    "node": "18.x",
     "npm": ">=9.0.0"
   },
   "scripts": {

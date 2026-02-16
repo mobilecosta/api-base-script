@@ -1,12 +1,12 @@
 import { Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
+import jwt, { Secret, SignOptions } from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { supabaseClient, supabaseAdmin } from '../config/supabase';
 import { validateAuthRequest, validateEmail, validatePassword } from '../utils/validation';
 import { AuthResponse, User, TokenPayload } from '../types';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-default-secret';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+const JWT_SECRET: Secret = process.env.JWT_SECRET || 'your-default-secret';
+const JWT_EXPIRES_IN: string | number = process.env.JWT_EXPIRES_IN || '7d';
 
 /**
  * Register a new user
@@ -75,7 +75,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         email: newUser.email,
       },
       JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
+      { expiresIn: JWT_EXPIRES_IN } as SignOptions
     );
 
     res.status(201).json({
@@ -141,7 +141,6 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       } as AuthResponse);
       return;
     }
-
     // Generate JWT token
     const token = jwt.sign(
       {
@@ -149,7 +148,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         email: user.email,
       },
       JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
+      { expiresIn: JWT_EXPIRES_IN } as SignOptions
     );
 
     res.json({

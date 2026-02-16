@@ -299,7 +299,40 @@ curl -H "Authorization: Bearer TOKEN" \
 
 ## 🚀 Deployment
 
-### Usar em Produção
+### Vercel Deployment (Recomendado)
+
+Para fazer deploy na Vercel (mais rápido e fácil):
+
+1. **Prepare o projeto:**
+   ```bash
+   npm run build
+   npm start
+   ```
+
+2. **Veja a documentação de deployment:**
+   - [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md) - Guia completo
+   - [VERCEL_CHECKLIST.md](./VERCEL_CHECKLIST.md) - Checklist pré-deployment
+
+3. **Deploy via CLI:**
+   ```bash
+   # Instale vercel CLI
+   npm install -g vercel
+   
+   # Login
+   vercel login
+   
+   # Deploy em preview
+   vercel
+   
+   # Deploy em produção
+   vercel --prod
+   ```
+
+4. **Ou use o script helper:**
+   - Linux/Mac: `./deploy.sh`
+   - Windows: `deploy.bat`
+
+### Usar em Produção (Manual)
 
 1. Altere `NODE_ENV=production` no `.env`
 2. Compile o projeto: `npm run build`

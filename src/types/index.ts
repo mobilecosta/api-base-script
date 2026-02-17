@@ -45,3 +45,26 @@ declare global {
     }
   }
 }
+
+export interface POMessage {
+  code: string;
+  message: string;
+  detailedMessage?: string;
+  type?: 'error' | 'warning' | 'information';
+  helpUrl?: string;
+}
+
+export interface POCollectionResponse<T> {
+  hasNext: boolean;
+  items: T[];
+  _messages?: POMessage[];
+}
+
+export interface POErrorResponse {
+  code: string;
+  message: string;
+  detailedMessage: string;
+  helpUrl?: string;
+  type?: 'error' | 'warning' | 'information';
+  details?: POMessage[];
+}

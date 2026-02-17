@@ -12,8 +12,9 @@ export const authenticateToken = (
 
   if (!token) {
     res.status(401).json({
-      success: false,
-      message: 'Access token required',
+      code: 'UNAUTHORIZED',
+      message: 'Token de acesso não fornecido',
+      detailedMessage: 'É necessário um token Bearer JWT no cabeçalho Authorization para acessar este recurso.'
     });
     return;
   }
@@ -26,18 +27,21 @@ export const authenticateToken = (
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {
       res.status(401).json({
-        success: false,
-        message: 'Token expired',
+        code: 'TOKEN_EXPIRED',
+        message: 'Token expirado',
+        detailedMessage: 'O token fornecido expirou. Por favor, realize o login novamente.'
       });
     } else if (error instanceof jwt.JsonWebTokenError) {
       res.status(403).json({
-        success: false,
-        message: 'Invalid token',
+        code: 'INVALID_TOKEN',
+        message: 'Token inválido',
+        detailedMessage: 'O token fornecido não é válido ou está malformado.'
       });
     } else {
       res.status(403).json({
-        success: false,
-        message: 'Forbidden',
+        code: 'FORBIDDEN',
+        message: 'Acesso proibido',
+        detailedMessage: 'Você não tem permissão para acessar este recurso.'
       });
     }
   }

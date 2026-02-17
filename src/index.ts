@@ -4,6 +4,7 @@ import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes';
+import userRoutes from './routes/userRoutes';
 
 dotenv.config();
 
@@ -129,6 +130,7 @@ const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 
 // Swagger UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
@@ -160,11 +162,12 @@ app.use((req: Request, res: Response) => {
 });
 
 // Error handler
-app.use((err: any, req: Request, res: Response) => {
+app.use((err: any, req: Request, res: Response, next: express.NextFunction) => {
   console.error('Error:', err);
   res.status(err.status || 500).json({
-    success: false,
-    message: err.message || 'Internal server error',
+    code: err.code || 'INTERNAL_SERVER_ERROR',
+    message: err.message || 'Erro interno do servidor',
+    detailedMessage: err.stack || 'Ocorreu um erro inesperado no servidor.'
   });
 });
 

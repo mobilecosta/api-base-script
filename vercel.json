@@ -2,9 +2,6 @@
   "version": 2,
   "buildCommand": "npm run vercel-build",
   "devCommand": "npm run dev",
-  "env": {
-    "NODE_ENV": "production"
-  },
   "builds": [
     {
       "src": "src/api/index.ts",

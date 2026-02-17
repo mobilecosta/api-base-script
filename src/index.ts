@@ -34,12 +34,8 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: `http://localhost:${PORT}`,
-        description: 'Development server',
-      },
-      {
-        url: 'https://api-base-script.vercel.app',
-        description: 'Production server',
+        url: '/',
+        description: 'Current server',
       },
     ],
     components: {
@@ -144,10 +140,14 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
 
 // Health check root
 app.get('/', (req: Request, res: Response) => {
+  const protocol = (req.headers['x-forwarded-proto'] as string) || req.protocol;
+  const host = (req.headers['x-forwarded-host'] as string) || req.get('host');
+  const docsUrl = host ? `${protocol}://${host}/api-docs` : `/api-docs`;
+
   res.json({
     success: true,
     message: 'Authentication API is running',
-    docs: `http://localhost:${PORT}/api-docs`,
+    docs: docsUrl,
     version: '1.0.0',
   });
 });

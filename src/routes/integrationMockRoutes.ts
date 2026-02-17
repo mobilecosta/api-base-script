@@ -37,7 +37,7 @@ const router = Router();
 
 /**
  * @swagger
- * /api/isp/dictionary/browse/columns/{alias}:
+ * /api/dictionary/browse/columns/{alias}:
  *   get:
  *     summary: Retorna schema completo do alias (columns/struct/folders/agrups)
  *     tags: [Integration Dictionary]
@@ -58,7 +58,7 @@ router.get('/dictionary/browse/columns/:alias', getBrowseColumns);
 
 /**
  * @swagger
- * /api/isp/dictionary/browse/items/{alias}:
+ * /api/dictionary/browse/items/{alias}:
  *   get:
  *     summary: Retorna itens paginados da tabela vinculada ao alias
  *     tags: [Integration Dictionary]
@@ -95,7 +95,7 @@ router.get('/dictionary/browse/items/:alias', getBrowseItems);
 
 /**
  * @swagger
- * /api/isp/dictionary/struct/{alias}:
+ * /api/dictionary/struct/{alias}:
  *   get:
  *     summary: Retorna estrutura do alias no formato AliasSchema
  *     tags: [Integration Dictionary]
@@ -115,7 +115,7 @@ router.get('/dictionary/struct/:alias', getStructAlias);
 
 /**
  * @swagger
- * /api/isp/dictionary/data/{alias}/{item}:
+ * /api/dictionary/data/{alias}/{item}:
  *   get:
  *     summary: Retorna item de dicionario por payload serializado na URL
  *     tags: [Integration Dictionary]
@@ -139,7 +139,7 @@ router.get('/dictionary/data/:alias/:item', getDictionaryData);
 
 /**
  * @swagger
- * /api/isp/dictionary/initializer/{alias}:
+ * /api/dictionary/initializer/{alias}:
  *   get:
  *     summary: Retorna objeto inicial padrao com base no schema do alias
  *     tags: [Integration Dictionary]
@@ -159,7 +159,7 @@ router.get('/dictionary/initializer/:alias', getDictionaryInitializer);
 
 /**
  * @swagger
- * /api/isp/dictionary/trigger/{campo}:
+ * /api/dictionary/trigger/{campo}:
  *   post:
  *     summary: Executa trigger mock e devolve payload normalizado
  *     tags: [Integration Dictionary]
@@ -183,7 +183,7 @@ router.post('/dictionary/trigger/:campo', executeTrigger);
 
 /**
  * @swagger
- * /api/isp/dictionary/sync:
+ * /api/dictionary/sync:
  *   post:
  *     summary: Sincroniza schemas de dicionario no Supabase (tables/table_fields/table_folders/table_agrups)
  *     tags: [Integration Dictionary]
@@ -277,7 +277,7 @@ router.post('/dictionary/sync', syncDictionarySchemas);
 
 /**
  * @swagger
- * /api/isp/lookup/{ctabela}:
+ * /api/lookup/{ctabela}:
  *   get:
  *     summary: Busca dados de lookup por tabela (SA1, Z02)
  *     tags: [Integration CRUD]
@@ -299,7 +299,7 @@ router.get('/lookup/:ctabela', getLookup);
 
 /**
  * @swagger
- * /api/isp/lookup/{ctabela}/{id}:
+ * /api/lookup/{ctabela}/{id}:
  *   get:
  *     summary: Busca registro de lookup por ID
  *     tags: [Integration CRUD]
@@ -322,7 +322,7 @@ router.get('/lookup/:ctabela/:id', getLookupById);
 
 /**
  * @swagger
- * /api/isp/platforms:
+ * /api/platforms:
  *   post:
  *     summary: Cria plataforma (legado Z10)
  *     tags: [Integration CRUD]
@@ -340,7 +340,7 @@ router.post('/platforms', postPlatforms);
 
 /**
  * @swagger
- * /api/isp/platforms/{id}:
+ * /api/platforms/{id}:
  *   put:
  *     summary: Atualiza plataforma (legado Z10)
  *     tags: [Integration CRUD]
@@ -366,7 +366,7 @@ router.put('/platforms/:id', putPlatforms);
 
 /**
  * @swagger
- * /api/isp/platforms/{id}:
+ * /api/platforms/{id}:
  *   delete:
  *     summary: Remove plataforma (legado Z10)
  *     tags: [Integration CRUD]
@@ -386,7 +386,7 @@ router.delete('/platforms/:id', deletePlatforms);
 
 /**
  * @swagger
- * /api/isp/shipping/program:
+ * /api/shipping/program:
  *   post:
  *     summary: Cria programa de envio (Z11)
  *     tags: [Integration CRUD]
@@ -404,7 +404,7 @@ router.post('/shipping/program', postShippingProgram);
 
 /**
  * @swagger
- * /api/isp/shipping/program/{id}:
+ * /api/shipping/program/{id}:
  *   put:
  *     summary: Atualiza programa de envio (Z11)
  *     tags: [Integration CRUD]
@@ -430,7 +430,7 @@ router.put('/shipping/program/:id', putShippingProgram);
 
 /**
  * @swagger
- * /api/isp/shipping/program/{id}:
+ * /api/shipping/program/{id}:
  *   delete:
  *     summary: Remove programa de envio (Z11)
  *     tags: [Integration CRUD]
@@ -450,7 +450,7 @@ router.delete('/shipping/program/:id', deleteShippingProgram);
 
 /**
  * @swagger
- * /api/isp/marketplaces/accounts:
+ * /api/marketplaces/accounts:
  *   post:
  *     summary: Cria conta de marketplace (Z00)
  *     tags: [Integration CRUD]
@@ -468,7 +468,7 @@ router.post('/marketplaces/accounts', postMarketplacesAccounts);
 
 /**
  * @swagger
- * /api/isp/marketplaces/accounts/{id}:
+ * /api/marketplaces/accounts/{id}:
  *   put:
  *     summary: Atualiza conta de marketplace (Z00)
  *     tags: [Integration CRUD]
@@ -494,7 +494,7 @@ router.put('/marketplaces/accounts/:id', putMarketplacesAccounts);
 
 /**
  * @swagger
- * /api/isp/marketplaces/accounts/{id}:
+ * /api/marketplaces/accounts/{id}:
  *   delete:
  *     summary: Remove conta de marketplace (Z00)
  *     tags: [Integration CRUD]
@@ -514,7 +514,7 @@ router.delete('/marketplaces/accounts/:id', deleteMarketplacesAccounts);
 
 /**
  * @swagger
- * /api/isp/productxaccounts:
+ * /api/productxaccounts:
  *   post:
  *     summary: Cria vínculo produto x conta (Z01)
  *     tags: [Integration CRUD]
@@ -532,7 +532,7 @@ router.post('/productxaccounts', postProductXAccounts);
 
 /**
  * @swagger
- * /api/isp/productxaccounts/{id}:
+ * /api/productxaccounts/{id}:
  *   get:
  *     summary: Busca vínculos por produto ERP (Z01_PRDERP)
  *     tags: [Integration CRUD]
@@ -550,7 +550,7 @@ router.get('/productxaccounts/:id', getProductXAccountsById);
 
 /**
  * @swagger
- * /api/isp/productxaccounts/{id}:
+ * /api/productxaccounts/{id}:
  *   delete:
  *     summary: Remove vínculos por produto ERP (Z01_PRDERP)
  *     tags: [Integration CRUD]
@@ -570,7 +570,7 @@ router.delete('/productxaccounts/:id', deleteProductXAccounts);
 
 /**
  * @swagger
- * /api/isp/integratedorders/{idPed}/{idInt}:
+ * /api/integratedorders/{idPed}/{idInt}:
  *   get:
  *     summary: Retorna itens, pagamentos e faturamentos do pedido integrado
  *     tags: [Integration CRUD]

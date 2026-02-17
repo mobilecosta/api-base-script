@@ -50,6 +50,19 @@ const router = Router();
  *     responses:
  *       200:
  *         description: Coleção de clientes
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 hasNext:
+ *                   type: boolean
+ *                 total:
+ *                   type: integer
+ *                 items:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Cliente'
  */
 router.get('/', authenticateToken, clienteController.listClientes);
 
@@ -70,6 +83,10 @@ router.get('/', authenticateToken, clienteController.listClientes);
  *     responses:
  *       200:
  *         description: Cliente encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Cliente'
  *       404:
  *         description: Cliente não encontrado
  */
@@ -102,6 +119,10 @@ router.get('/:id', authenticateToken, clienteController.getCliente);
  *     responses:
  *       201:
  *         description: Cliente criado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Cliente'
  *       409:
  *         description: Cliente já existe
  */
@@ -137,6 +158,10 @@ router.post('/', authenticateToken, clienteController.createCliente);
  *     responses:
  *       200:
  *         description: Cliente atualizado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Cliente'
  *       404:
  *         description: Cliente não encontrado
  */

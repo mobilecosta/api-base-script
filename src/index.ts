@@ -169,8 +169,8 @@ const swaggerSpec = swaggerJsdoc(swaggerOptions);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/clientes', clienteRoutes);
-app.use('/api/isp', integrationMockRoutes);
-app.use('/app-root/api/isp', integrationMockRoutes);
+app.use('/api', integrationMockRoutes);
+app.use('/app-root/api', integrationMockRoutes);
 
 // Swagger UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {

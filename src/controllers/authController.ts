@@ -2,8 +2,8 @@ import { Request, Response } from 'express';
 import jwt, { Secret, SignOptions } from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { supabaseClient, supabaseAdmin } from '../config/supabase';
-import { validateAuthRequest, validateEmail, validatePassword } from '../utils/validation';
-import { AuthResponse, User, TokenPayload } from '../types';
+import { validateAuthRequest } from '../utils/validation';
+import { AuthResponse, TokenPayload } from '../types';
 
 const JWT_SECRET: Secret = process.env.JWT_SECRET || 'your-default-secret';
 const JWT_EXPIRES_IN: string | number = process.env.JWT_EXPIRES_IN || '7d';
@@ -31,14 +31,13 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     // Check if user already exists
     console.log('🔍 Verificando se usuário já existe...');
-    const { data: existingUser, error: checkError } = await supabaseClient
+    const { data: existingUser, error: checkError } = await supabaseAdmin
       .from('users')
       .select('id')
       .eq('email', email)
-      .single();
+      .maybeSingle();
 
-    if (checkError && checkError.code !== 'PGRST116') {
-      // PGRST116 means no rows found, which is expected
+    if (checkError) {
       console.warn('⚠️ Erro ao verificar usuário:', checkError);
     }
 
@@ -55,7 +54,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     console.log('🔐 Hashando senha...');
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Prepare user data
+    // Prepare user data using database column names (snake_case)
     const userData = {
       email,
       password: hashedPassword,
@@ -64,20 +63,10 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       updated_at: new Date().toISOString(),
     };
 
-    console.log('💾 Criando usuário no Supabase com dados:', {
-      email: userData.email,
-      name: userData.name,
-      created_at: userData.created_at,
-    });
+    console.log('💾 Criando usuário no Supabase...');
 
     // Create user in Supabase users table
     // Use supabaseAdmin (with service role key) to bypass RLS
-    console.log('💾 Criando usuário no Supabase com dados:', {
-      email: userData.email,
-      name: userData.name,
-      created_at: userData.created_at,
-    });
-
     const { data: newUser, error: insertError } = await supabaseAdmin
       .from('users')
       .insert([userData])
@@ -106,7 +95,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       {
         id: newUser.id,
         email: newUser.email,
-      },
+      } as TokenPayload,
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN } as SignOptions
     );
@@ -152,12 +141,12 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Find user
-    const { data: user, error: queryError } = await supabaseClient
+    // Find user - Using supabaseAdmin to ensure we can find the user regardless of RLS for login
+    const { data: user, error: queryError } = await supabaseAdmin
       .from('users')
       .select('*')
       .eq('email', email)
-      .single();
+      .maybeSingle();
 
     if (queryError || !user) {
       res.status(401).json({
@@ -181,7 +170,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       {
         id: user.id,
         email: user.email,
-      },
+      } as TokenPayload,
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN } as SignOptions
     );
@@ -220,11 +209,11 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    const { data: user, error } = await supabaseClient
+    const { data: user, error } = await supabaseAdmin
       .from('users')
       .select('*')
       .eq('id', req.user.id)
-      .single();
+      .maybeSingle();
 
     if (error || !user) {
       res.status(404).json({
@@ -277,7 +266,7 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const { data: updatedUser, error } = await supabaseClient
+    const { data: updatedUser, error } = await supabaseAdmin
       .from('users')
       .update({
         name,
@@ -339,20 +328,12 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    if (!validatePassword(newPassword)) {
-      res.status(400).json({
-        success: false,
-        message: 'New password must be at least 6 characters',
-      } as AuthResponse);
-      return;
-    }
-
     // Get user
-    const { data: user, error: userError } = await supabaseClient
+    const { data: user, error: userError } = await supabaseAdmin
       .from('users')
       .select('password')
       .eq('id', req.user.id)
-      .single();
+      .maybeSingle();
 
     if (userError || !user) {
       res.status(404).json({
@@ -376,7 +357,7 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     // Update password
-    const { error: updateError } = await supabaseClient
+    const { error: updateError } = await supabaseAdmin
       .from('users')
       .update({
         password: hashedPassword,

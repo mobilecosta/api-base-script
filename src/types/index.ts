@@ -2,8 +2,8 @@ export interface User {
   id: string;
   email: string;
   name?: string;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AuthRequest {
@@ -15,16 +15,23 @@ export interface AuthRequest {
 export interface AuthResponse {
   success: boolean;
   message: string;
-  user?: User;
+  user?: {
+    id: string;
+    email: string;
+    name?: string;
+    createdAt: string;
+    updatedAt: string;
+  };
   token?: string;
   refreshToken?: string;
+  errors?: string[];
 }
 
 export interface TokenPayload {
   id: string;
   email: string;
-  iat: number;
-  exp: number;
+  iat?: number;
+  exp?: number;
 }
 
 export interface RequestWithUser extends Express.Request {

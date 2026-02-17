@@ -92,6 +92,22 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id);
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires_at ON refresh_tokens(expires_at);
 
+-- ==================== CLIENTES TABLE (PO UI CRUD) ====================
+
+CREATE TABLE IF NOT EXISTS clientes (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  codigo VARCHAR(40) NOT NULL UNIQUE,
+  nome VARCHAR(255) NOT NULL,
+  ativo BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_clientes_codigo ON clientes(codigo);
+CREATE INDEX IF NOT EXISTS idx_clientes_nome ON clientes(nome);
+CREATE INDEX IF NOT EXISTS idx_clientes_ativo ON clientes(ativo);
+CREATE INDEX IF NOT EXISTS idx_clientes_created_at ON clientes(created_at DESC);
+
 -- ==================== HELPER FUNCTIONS ====================
 
 -- Function to update updated_at timestamp
@@ -107,6 +123,12 @@ $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at
   BEFORE UPDATE ON users
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_clientes_updated_at ON clientes;
+CREATE TRIGGER update_clientes_updated_at
+  BEFORE UPDATE ON clientes
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 

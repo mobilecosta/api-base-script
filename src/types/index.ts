@@ -56,6 +56,7 @@ export interface POMessage {
 
 export interface POCollectionResponse<T> {
   hasNext: boolean;
+  total?: number;
   items: T[];
   _messages?: POMessage[];
 }

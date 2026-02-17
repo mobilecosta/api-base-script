@@ -47,6 +47,7 @@ export const listUsers = async (req: Request, res: Response): Promise<void> => {
 
     const response: POCollectionResponse<any> = {
       hasNext,
+      total: count || 0,
       items: data || []
     };
 

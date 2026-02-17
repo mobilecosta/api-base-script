@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { supabaseAdmin } from '../config/supabase';
 
 type Primitive = string | number | boolean | null | undefined;
 type RecordData = Record<string, Primitive | Primitive[] | Record<string, unknown> | unknown[]>;
@@ -102,7 +103,64 @@ const mockStore = {
   ] as Array<Record<string, any>>
 };
 
-const aliasSchemas: Record<string, AliasSchema> = {
+type TableRow = {
+  id: number;
+  alias_code: string;
+  description: string;
+};
+
+type TableFieldRow = {
+  field_name: string;
+  title: string;
+  type: StructField['type'];
+  size: number;
+  required: boolean;
+  editable: boolean;
+  enabled: boolean;
+  virtual: boolean;
+  options: unknown;
+  decimals: number;
+  exist_trigger: boolean;
+  help: string;
+  field_order: number;
+  agrup_code: string | null;
+  folder_code: string | null;
+  standard_query: string | null;
+  standard_query_detail: StructField['standard_query_detail'] | null;
+};
+
+type TableFolderRow = { folder_code: string; title: string };
+type TableAgrupRow = { agrup_code: string; title: string; agrup_order: number };
+
+function field(
+  name: string,
+  title: string,
+  type: StructField['type'],
+  size: number,
+  required: boolean,
+  order: number,
+  options: StructField['options'] = [],
+  withDecimals = false,
+  editable = true
+): StructField {
+  return {
+    field: name,
+    title,
+    type,
+    size,
+    required,
+    editable,
+    enabled: true,
+    virtual: false,
+    options,
+    decimals: withDecimals ? 2 : 0,
+    exist_trigger: false,
+    help: '',
+    order
+  };
+}
+
+const defaultAliasSchemas: Record<string, AliasSchema> = {
   Z10: {
     description: 'Plataformas',
     folders: [],
@@ -220,31 +278,99 @@ const aliasSchemas: Record<string, AliasSchema> = {
   }
 };
 
-function field(
-  name: string,
-  title: string,
-  type: StructField['type'],
-  size: number,
-  required: boolean,
-  order: number,
-  options: StructField['options'] = [],
-  withDecimals = false,
-  editable = true
-): StructField {
+async function loadRowsWithFallback<T>(
+  tableNames: string[],
+  load: (tableName: string) => Promise<{ data: T[] | null; error: any }>
+): Promise<T[]> {
+  let lastError: any = null;
+  for (const tableName of tableNames) {
+    const { data, error } = await load(tableName);
+    if (!error) return data || [];
+    if (error.code === '42P01') {
+      lastError = error;
+      continue;
+    }
+    throw error;
+  }
+  throw lastError || new Error(`No compatible tables found: ${tableNames.join(', ')}`);
+}
+
+async function resolveTableName(tableNames: string[]): Promise<string> {
+  let lastError: any = null;
+  for (const tableName of tableNames) {
+    const { error } = await supabaseAdmin.from(tableName).select('*').limit(1);
+    if (!error) return tableName;
+    if (error.code === '42P01') {
+      lastError = error;
+      continue;
+    }
+    throw error;
+  }
+  throw lastError || new Error(`No compatible tables found: ${tableNames.join(', ')}`);
+}
+
+async function getAliasSchemaFromDb(alias: string): Promise<AliasSchema | null> {
+  const { data: tableData, error: tableError } = await supabaseAdmin
+    .from('tables')
+    .select('id, alias_code, description')
+    .eq('alias_code', alias)
+    .maybeSingle<TableRow>();
+
+  if (tableError) throw tableError;
+  if (!tableData) return null;
+
+  const [fields, folders, agrups] = await Promise.all([
+    loadRowsWithFallback<TableFieldRow>(['table_fields', 'tables_fields'], async tableName => {
+      const { data, error } = await supabaseAdmin
+        .from(tableName)
+        .select(
+          'field_name, title, type, size, required, editable, enabled, virtual, options, decimals, exist_trigger, help, field_order, agrup_code, folder_code, standard_query, standard_query_detail'
+        )
+        .eq('table_id', tableData.id)
+        .order('field_order', { ascending: true });
+      return { data: data as TableFieldRow[] | null, error };
+    }),
+    loadRowsWithFallback<TableFolderRow>(['table_folders', 'tables_folders'], async tableName => {
+      const { data, error } = await supabaseAdmin
+        .from(tableName)
+        .select('folder_code, title')
+        .eq('table_id', tableData.id)
+        .order('folder_code', { ascending: true });
+      return { data: data as TableFolderRow[] | null, error };
+    }),
+    loadRowsWithFallback<TableAgrupRow>(['table_agrups', 'tables_agrups'], async tableName => {
+      const { data, error } = await supabaseAdmin
+        .from(tableName)
+        .select('agrup_code, title, agrup_order')
+        .eq('table_id', tableData.id)
+        .order('agrup_order', { ascending: true });
+      return { data: data as TableAgrupRow[] | null, error };
+    })
+  ]);
+
   return {
-    field: name,
-    title,
-    type,
-    size,
-    required,
-    editable,
-    enabled: true,
-    virtual: false,
-    options,
-    decimals: withDecimals ? 2 : 0,
-    exist_trigger: false,
-    help: '',
-    order
+    description: tableData.description,
+    struct: fields.map(row => ({
+      field: row.field_name,
+      title: row.title,
+      type: row.type,
+      size: row.size,
+      required: row.required,
+      editable: row.editable,
+      enabled: row.enabled,
+      virtual: row.virtual,
+      options: Array.isArray(row.options) ? (row.options as StructField['options']) : [],
+      decimals: row.decimals,
+      exist_trigger: row.exist_trigger,
+      help: row.help || '',
+      order: row.field_order,
+      agrup: row.agrup_code || undefined,
+      folder: row.folder_code || undefined,
+      standard_query: row.standard_query || undefined,
+      standard_query_detail: row.standard_query_detail || undefined
+    })),
+    folders: folders.map(row => ({ id: row.folder_code, title: row.title })),
+    agrups: agrups.map(row => ({ id: row.agrup_code, title: row.title, order: row.agrup_order }))
   };
 }
 
@@ -330,16 +456,170 @@ function parseJsonFromPath(rawParam: string): any {
   }
 }
 
-export const getBrowseColumns = (req: Request, res: Response): void => {
-  const alias = String(req.params.alias || '').toUpperCase();
-  const schema = aliasSchemas[alias];
-
-  if (!schema) {
-    res.status(404).json({ message: `Alias not found: ${alias}` });
-    return;
+function normalizeAliasSchemasPayload(body: Record<string, any>): Record<string, AliasSchema> {
+  if (body && body.aliasSchemas && typeof body.aliasSchemas === 'object' && !Array.isArray(body.aliasSchemas)) {
+    return body.aliasSchemas as Record<string, AliasSchema>;
   }
+  if (body && Array.isArray(body.schemas)) {
+    const mapped = body.schemas.reduce<Record<string, AliasSchema>>((acc, item: any) => {
+      const alias = String(item?.alias || '').toUpperCase();
+      if (!alias || !item?.description || !Array.isArray(item?.struct)) return acc;
+      acc[alias] = {
+        description: String(item.description),
+        struct: item.struct,
+        folders: Array.isArray(item.folders) ? item.folders : [],
+        agrups: Array.isArray(item.agrups) ? item.agrups : []
+      };
+      return acc;
+    }, {});
+    if (Object.keys(mapped).length > 0) return mapped;
+  }
+  return {};
+}
 
-  res.json(schema);
+export const syncDictionarySchemas = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const body = normalizeBody(req.body);
+    const useSeed = String(body.useSeed || '').toLowerCase() === 'true' || body.useSeed === true;
+    const providedSchemas = normalizeAliasSchemasPayload(body);
+    const schemas = Object.keys(providedSchemas).length > 0 ? providedSchemas : (useSeed ? defaultAliasSchemas : {});
+
+    if (Object.keys(schemas).length === 0) {
+      res.status(400).json({
+        message: 'No schemas provided. Send aliasSchemas/schemas in request body or use useSeed=true.'
+      });
+      return;
+    }
+
+    const [fieldsTableName, foldersTableName, agrupsTableName] = await Promise.all([
+      resolveTableName(['table_fields', 'tables_fields']),
+      resolveTableName(['table_folders', 'tables_folders']),
+      resolveTableName(['table_agrups', 'tables_agrups'])
+    ]);
+
+    const results: Array<{ alias: string; tableId: number; fields: number; folders: number; agrups: number }> = [];
+
+    for (const [aliasRaw, schema] of Object.entries(schemas)) {
+      const alias = aliasRaw.toUpperCase();
+      const description = String(schema.description || '').trim();
+      if (!description) continue;
+
+      const { data: upsertedTable, error: upsertTableError } = await supabaseAdmin
+        .from('tables')
+        .upsert(
+          {
+            alias_code: alias,
+            description,
+            updated_at: nowIso()
+          },
+          { onConflict: 'alias_code' }
+        )
+        .select('id')
+        .single<{ id: number }>();
+
+      if (upsertTableError) throw upsertTableError;
+      const tableId = upsertedTable.id;
+
+      const [deleteFields, deleteFolders, deleteAgrups] = await Promise.all([
+        supabaseAdmin.from(fieldsTableName).delete().eq('table_id', tableId),
+        supabaseAdmin.from(foldersTableName).delete().eq('table_id', tableId),
+        supabaseAdmin.from(agrupsTableName).delete().eq('table_id', tableId)
+      ]);
+
+      if (deleteFields.error) throw deleteFields.error;
+      if (deleteFolders.error) throw deleteFolders.error;
+      if (deleteAgrups.error) throw deleteAgrups.error;
+
+      const foldersPayload = (schema.folders || []).map(folder => ({
+        table_id: tableId,
+        folder_code: String(folder.id),
+        title: String(folder.title || '')
+      }));
+      if (foldersPayload.length > 0) {
+        const { error } = await supabaseAdmin.from(foldersTableName).insert(foldersPayload);
+        if (error) throw error;
+      }
+
+      const agrupsPayload = (schema.agrups || []).map(agrup => ({
+        table_id: tableId,
+        agrup_code: String(agrup.id),
+        title: String(agrup.title || ''),
+        agrup_order: Number(agrup.order || 0)
+      }));
+      if (agrupsPayload.length > 0) {
+        const { error } = await supabaseAdmin.from(agrupsTableName).insert(agrupsPayload);
+        if (error) throw error;
+      }
+
+      const fieldsPayload = (schema.struct || []).map(col => ({
+        table_id: tableId,
+        field_name: String(col.field),
+        title: String(col.title || ''),
+        type: col.type,
+        size: Number(col.size || 0),
+        required: Boolean(col.required),
+        editable: col.editable !== false,
+        enabled: col.enabled !== false,
+        virtual: Boolean(col.virtual),
+        options: Array.isArray(col.options) ? col.options : [],
+        decimals: Number(col.decimals || 0),
+        exist_trigger: Boolean(col.exist_trigger),
+        help: String(col.help || ''),
+        field_order: Number(col.order || 0),
+        agrup_code: col.agrup ? String(col.agrup) : null,
+        folder_code: col.folder ? String(col.folder) : null,
+        standard_query: col.standard_query || null,
+        standard_query_detail: col.standard_query_detail || null
+      }));
+      if (fieldsPayload.length > 0) {
+        const { error } = await supabaseAdmin.from(fieldsTableName).insert(fieldsPayload);
+        if (error) throw error;
+      }
+
+      results.push({
+        alias,
+        tableId,
+        fields: fieldsPayload.length,
+        folders: foldersPayload.length,
+        agrups: agrupsPayload.length
+      });
+    }
+
+    res.json({
+      success: true,
+      synced: results.length,
+      childrenTables: {
+        fields: fieldsTableName,
+        folders: foldersTableName,
+        agrups: agrupsTableName
+      },
+      results
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      message: 'Error synchronizing dictionary schemas',
+      detailedMessage: error.message
+    });
+  }
+};
+
+export const getBrowseColumns = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const alias = String(req.params.alias || '').toUpperCase();
+    const schema = await getAliasSchemaFromDb(alias);
+
+    if (!schema) {
+      res.status(404).json({ message: `Alias not found: ${alias}` });
+      return;
+    }
+
+    res.json(schema);
+  } catch (error: any) {
+    res.status(500).json({
+      message: 'Error loading browse columns from database',
+      detailedMessage: error.message
+    });
+  }
 };
 
 export const getBrowseItems = (req: Request, res: Response): void => {
@@ -366,14 +646,21 @@ export const getBrowseItems = (req: Request, res: Response): void => {
   });
 };
 
-export const getStructAlias = (req: Request, res: Response): void => {
-  const alias = String(req.params.alias || '').toUpperCase();
-  const schema = aliasSchemas[alias];
-  if (!schema) {
-    res.status(404).json({ message: `Alias not found: ${alias}` });
-    return;
+export const getStructAlias = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const alias = String(req.params.alias || '').toUpperCase();
+    const schema = await getAliasSchemaFromDb(alias);
+    if (!schema) {
+      res.status(404).json({ message: `Alias not found: ${alias}` });
+      return;
+    }
+    res.json(schema);
+  } catch (error: any) {
+    res.status(500).json({
+      message: 'Error loading struct alias from database',
+      detailedMessage: error.message
+    });
   }
-  res.json(schema);
 };
 
 export const getDictionaryData = (req: Request, res: Response): void => {
@@ -393,37 +680,44 @@ export const getDictionaryData = (req: Request, res: Response): void => {
   res.json(found || items[0]);
 };
 
-export const getDictionaryInitializer = (req: Request, res: Response): void => {
-  const alias = String(req.params.alias || '').toUpperCase();
-  const schema = aliasSchemas[alias];
+export const getDictionaryInitializer = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const alias = String(req.params.alias || '').toUpperCase();
+    const schema = await getAliasSchemaFromDb(alias);
 
-  if (!schema) {
-    res.status(404).json({ message: `Alias not found: ${alias}` });
-    return;
+    if (!schema) {
+      res.status(404).json({ message: `Alias not found: ${alias}` });
+      return;
+    }
+
+    const initial = schema.struct.reduce<Record<string, any>>((acc, col) => {
+      if (col.options.length > 0) {
+        acc[col.field] = col.options[0].value;
+        return acc;
+      }
+      if (col.type === 'N') {
+        acc[col.field] = 0;
+        return acc;
+      }
+      if (col.type === 'D') {
+        acc[col.field] = toDateYmd(nowIso());
+        return acc;
+      }
+      if (col.type === 'L') {
+        acc[col.field] = false;
+        return acc;
+      }
+      acc[col.field] = '';
+      return acc;
+    }, {});
+
+    res.json(initial);
+  } catch (error: any) {
+    res.status(500).json({
+      message: 'Error building dictionary initializer from database',
+      detailedMessage: error.message
+    });
   }
-
-  const initial = schema.struct.reduce<Record<string, any>>((acc, col) => {
-    if (col.options.length > 0) {
-      acc[col.field] = col.options[0].value;
-      return acc;
-    }
-    if (col.type === 'N') {
-      acc[col.field] = 0;
-      return acc;
-    }
-    if (col.type === 'D') {
-      acc[col.field] = toDateYmd(nowIso());
-      return acc;
-    }
-    if (col.type === 'L') {
-      acc[col.field] = false;
-      return acc;
-    }
-    acc[col.field] = '';
-    return acc;
-  }, {});
-
-  res.json(initial);
 };
 
 export const executeTrigger = (req: Request, res: Response): void => {

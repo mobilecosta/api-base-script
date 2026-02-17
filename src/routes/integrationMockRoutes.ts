@@ -20,7 +20,8 @@ import {
   postShippingProgram,
   putMarketplacesAccounts,
   putPlatforms,
-  putShippingProgram
+  putShippingProgram,
+  syncDictionarySchemas
 } from '../controllers/integrationMockController';
 
 const router = Router();
@@ -31,6 +32,7 @@ router.get('/dictionary/struct/:alias', getStructAlias);
 router.get('/dictionary/data/:alias/:item', getDictionaryData);
 router.get('/dictionary/initializer/:alias', getDictionaryInitializer);
 router.post('/dictionary/trigger/:campo', executeTrigger);
+router.post('/dictionary/sync', syncDictionarySchemas);
 
 router.get('/lookup/:ctabela', getLookup);
 router.get('/lookup/:ctabela/:id', getLookupById);

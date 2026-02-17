@@ -38,7 +38,7 @@ const swaggerOptions = {
         description: 'Development server',
       },
       {
-        url: 'https://api.example.com',
+        url: 'https://api-base-script.vercel.app',
         description: 'Production server',
       },
     ],

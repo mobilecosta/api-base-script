@@ -15,9 +15,12 @@ export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password, name } = req.body;
 
+    console.log('📝 Registro iniciado para:', email);
+
     // Validate input
     const validation = validateAuthRequest(email, password);
     if (!validation.isValid) {
+      console.warn('❌ Validação falhou:', validation.errors);
       res.status(400).json({
         success: false,
         message: 'Validation failed',
@@ -27,13 +30,20 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Check if user already exists
-    const { data: existingUser } = await supabaseClient
+    console.log('🔍 Verificando se usuário já existe...');
+    const { data: existingUser, error: checkError } = await supabaseClient
       .from('users')
       .select('id')
       .eq('email', email)
       .single();
 
+    if (checkError && checkError.code !== 'PGRST116') {
+      // PGRST116 means no rows found, which is expected
+      console.warn('⚠️ Erro ao verificar usuário:', checkError);
+    }
+
     if (existingUser) {
+      console.warn('❌ Usuário já existe:', email);
       res.status(409).json({
         success: false,
         message: 'User already exists',
@@ -42,31 +52,54 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Hash password
+    console.log('🔐 Hashando senha...');
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Prepare user data
+    const userData = {
+      email,
+      password: hashedPassword,
+      name: name || email.split('@')[0],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    console.log('💾 Criando usuário no Supabase com dados:', {
+      email: userData.email,
+      name: userData.name,
+      created_at: userData.created_at,
+    });
+
     // Create user in Supabase users table
-    const { data: newUser, error: insertError } = await supabaseClient
+    // Use supabaseAdmin (with service role key) to bypass RLS
+    console.log('💾 Criando usuário no Supabase com dados:', {
+      email: userData.email,
+      name: userData.name,
+      created_at: userData.created_at,
+    });
+
+    const { data: newUser, error: insertError } = await supabaseAdmin
       .from('users')
-      .insert([
-        {
-          email,
-          password: hashedPassword,
-          name: name || email.split('@')[0],
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-      ])
+      .insert([userData])
       .select()
       .single();
 
     if (insertError || !newUser) {
-      console.error('Register error:', insertError);
+      console.error('❌ ERRO AO CRIAR USUÁRIO:');
+      console.error('   Código:', insertError?.code);
+      console.error('   Mensagem:', insertError?.message);
+      console.error('   Hint:', insertError?.hint);
+      console.error('   Detalhes:', insertError?.details);
+      
       res.status(500).json({
         success: false,
         message: 'Failed to create user',
-      } as AuthResponse);
+        error: insertError?.message || 'Unknown error',
+      } as any);
       return;
     }
+
+    console.log('✅ Usuário criado com sucesso:', newUser.id);
 
     // Generate JWT token
     const token = jwt.sign(
@@ -77,6 +110,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN } as SignOptions
     );
+
+    console.log('🎫 Token gerado para:', newUser.email);
 
     res.status(201).json({
       success: true,
@@ -91,7 +126,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       token,
     } as AuthResponse);
   } catch (error) {
-    console.error('Register error:', error);
+    console.error('❌ ERRO NÃO TRATADO NO REGISTRO:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error',

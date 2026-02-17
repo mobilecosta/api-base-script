@@ -86,6 +86,45 @@ const swaggerOptions = {
             updatedAt: '2024-01-15T15:30:00Z',
           },
         },
+        Cliente: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              format: 'uuid',
+              description: 'Identificador único do cliente',
+            },
+            codigo: {
+              type: 'string',
+              description: 'Código único do cliente',
+            },
+            nome: {
+              type: 'string',
+              description: 'Nome do cliente',
+            },
+            ativo: {
+              type: 'boolean',
+              description: 'Status do cliente',
+            },
+            created_at: {
+              type: 'string',
+              format: 'date-time',
+            },
+            updated_at: {
+              type: 'string',
+              format: 'date-time',
+            },
+          },
+          required: ['id', 'codigo', 'nome', 'ativo'],
+          example: {
+            id: '123e4567-e89b-12d3-a456-426614174000',
+            codigo: 'CLI001',
+            nome: 'Cliente Exemplo',
+            ativo: true,
+            created_at: '2026-02-17T10:00:00.000Z',
+            updated_at: '2026-02-17T10:00:00.000Z',
+          },
+        },
         AuthResponse: {
           type: 'object',
           properties: {
@@ -130,8 +169,8 @@ const swaggerSpec = swaggerJsdoc(swaggerOptions);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/clientes', clienteRoutes);
-app.use('/api/v1/isp', integrationMockRoutes);
-app.use('/app-root/api/v1/isp', integrationMockRoutes);
+app.use('/api/isp', integrationMockRoutes);
+app.use('/app-root/api/isp', integrationMockRoutes);
 
 // Swagger UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {

@@ -39,68 +39,22 @@ const nowIso = () => new Date().toISOString();
 
 const toDateYmd = (isoDate: string) => isoDate.substring(0, 10).replace(/-/g, '');
 
-const mockStore = {
-  platforms: [
-    { Z10_COD: 'PLAT001', Z10_DESC: 'Mercado Livre', Z10_ATIVO: 'S', Z10_DTALT: toDateYmd(nowIso()) },
-    { Z10_COD: 'PLAT002', Z10_DESC: 'Shopee', Z10_ATIVO: 'S', Z10_DTALT: toDateYmd(nowIso()) }
-  ] as Array<Record<string, any>>,
-  shippingPrograms: [
-    { Z11_COD: 'ENV001', Z11_DESC: 'Entrega Expressa', Z11_PRAZO: 2, Z11_ATIVO: 'S' },
-    { Z11_COD: 'ENV002', Z11_DESC: 'Entrega Economica', Z11_PRAZO: 6, Z11_ATIVO: 'S' }
-  ] as Array<Record<string, any>>,
-  marketplacesAccounts: [
-    { Z00_COD: 'ACC001', Z00_DESC: 'Conta Principal ML', Z00_TOKEN: 'token-ml-001', Z00_STATUS: 'A' },
-    { Z00_COD: 'ACC002', Z00_DESC: 'Conta Shopee Sul', Z00_TOKEN: 'token-shp-002', Z00_STATUS: 'A' }
-  ] as Array<Record<string, any>>,
-  productXAccounts: [
-    { Z01_COD: '1', Z01_PRDERP: 'PRD001', Z01_DESCER: 'Camisa Polo', Z01_CONTA: 'ACC001', Z01_SKU: 'SKU-ML-001', Z01_ATIVO: 'S' },
-    { Z01_COD: '2', Z01_PRDERP: 'PRD001', Z01_DESCER: 'Camisa Polo', Z01_CONTA: 'ACC002', Z01_SKU: 'SKU-SHP-044', Z01_ATIVO: 'S' },
-    { Z01_COD: '3', Z01_PRDERP: 'PRD002', Z01_DESCER: 'Tenis Esportivo', Z01_CONTA: 'ACC001', Z01_SKU: 'SKU-ML-777', Z01_ATIVO: 'S' }
-  ] as Array<Record<string, any>>,
-  integratedOrders: [
-    {
-      Z02_COD: 'INT001',
-      Z02_IDPED: 'PED-1001',
-      Z02_IDINT: 'I1001',
-      Z02_PEDIDO: '4500012345',
-      Z02_CLIENT: '000001',
-      Z02_LOJA: '01',
-      Z02_STATUS: 'PROC',
-      Z02_ULTATT: toDateYmd(nowIso())
-    },
-    {
-      Z02_COD: 'INT002',
-      Z02_IDPED: 'PED-1002',
-      Z02_IDINT: 'I1002',
-      Z02_PEDIDO: '4500012346',
-      Z02_CLIENT: '000002',
-      Z02_LOJA: '01',
-      Z02_STATUS: 'NOVO',
-      Z02_ULTATT: toDateYmd(nowIso())
-    }
-  ] as Array<Record<string, any>>,
-  processingLogs: [
-    { Z04_COD: 'LOG001', Z04_DTHORA: toDateYmd(nowIso()), Z04_TIPO: 'INFO', Z04_STATUS: 'OK', Z04_MSG: 'Integracao concluida' },
-    { Z04_COD: 'LOG002', Z04_DTHORA: toDateYmd(nowIso()), Z04_TIPO: 'ERRO', Z04_STATUS: 'FALHA', Z04_MSG: 'Falha no envio para marketplace' }
-  ] as Array<Record<string, any>>,
-  integratedItems: {
-    'PED-1001|I1001': {
-      Z03: [
-        { Z03_ITEM: '001', Z03_PROD: 'PRD001', Z03_DESC: 'Camisa Polo', Z03_QTD: 2, Z03_VLR: 99.9 }
-      ],
-      Z05: [
-        { Z05_FORMA: 'PIX', Z05_VALOR: 199.8, Z05_STATUS: 'PAGO' }
-      ],
-      Z06: [
-        { Z06_DOC: 'NF001', Z06_SERIE: '1', Z06_VALOR: 199.8, Z06_STATUS: 'EMITIDO' }
-      ]
-    }
-  } as Record<string, { Z03: Array<Record<string, any>>; Z05: Array<Record<string, any>>; Z06: Array<Record<string, any>> }>,
-  sa1: [
-    { a1_cod: '000001', a1_loja: '01', a1_nome: 'Cliente Mock 1' },
-    { a1_cod: '000002', a1_loja: '01', a1_nome: 'Cliente Mock 2' },
-    { a1_cod: '000003', a1_loja: '02', a1_nome: 'Cliente Mock 3' }
-  ] as Array<Record<string, any>>
+const aliasIdFieldMap: Record<string, string> = {
+  Z10: 'z10_cod',
+  Z11: 'z11_cod',
+  Z00: 'z00_cod',
+  Z01: 'z01_prderp',
+  Z02: 'z02_cod',
+  Z04: 'z04_cod'
+};
+
+const aliasCodePrefixMap: Record<string, string> = {
+  Z10: 'PLAT',
+  Z11: 'ENV',
+  Z00: 'ACC',
+  Z01: 'PXA',
+  Z02: 'INT',
+  Z04: 'LOG'
 };
 
 type TableRow = {
@@ -386,44 +340,78 @@ async function getAliasSchemaFromDb(alias: string): Promise<AliasSchema | null> 
   };
 }
 
-function getAliasData(alias: string): Array<Record<string, any>> {
-  const key = alias.toUpperCase();
-  switch (key) {
-    case 'Z10':
-      return mockStore.platforms;
-    case 'Z11':
-      return mockStore.shippingPrograms;
-    case 'Z00':
-      return mockStore.marketplacesAccounts;
-    case 'Z01':
-      return mockStore.productXAccounts;
-    case 'Z02':
-      return mockStore.integratedOrders;
-    case 'Z04':
-      return mockStore.processingLogs;
-    default:
-      return [];
+function getAliasTableName(alias: string): string {
+  return alias.toLowerCase();
+}
+
+function toUpperKeys(item: Record<string, any>): Record<string, any> {
+  return Object.entries(item).reduce<Record<string, any>>((acc, [key, value]) => {
+    acc[key.toUpperCase()] = value;
+    return acc;
+  }, {});
+}
+
+function toLowerKeys(item: Record<string, any>): Record<string, any> {
+  return Object.entries(item).reduce<Record<string, any>>((acc, [key, value]) => {
+    acc[key.toLowerCase()] = value;
+    return acc;
+  }, {});
+}
+
+function generateCode(prefix: string): string {
+  return `${prefix}${Date.now().toString().slice(-6)}`;
+}
+
+async function fetchAliasRows(alias: string): Promise<Array<Record<string, any>>> {
+  const tableName = getAliasTableName(alias);
+  const { data, error } = await supabaseAdmin.from(tableName).select('*');
+  if (error) {
+    if (isMissingTableError(error)) return [];
+    throw error;
   }
+  return (data || []).map(row => toUpperKeys(row as Record<string, any>));
 }
 
 function resolveRecordId(alias: string, item: Record<string, any>): string {
-  const key = alias.toUpperCase();
-  switch (key) {
-    case 'Z10':
-      return String(item.Z10_COD || '');
-    case 'Z11':
-      return String(item.Z11_COD || '');
-    case 'Z00':
-      return String(item.Z00_COD || '');
-    case 'Z01':
-      return String(item.Z01_PRDERP || item.Z01_COD || '');
-    case 'Z02':
-      return String(item.Z02_COD || '');
-    case 'Z04':
-      return String(item.Z04_COD || '');
-    default:
-      return '';
-  }
+  const idField = aliasIdFieldMap[alias.toUpperCase()] || `${alias.toLowerCase()}_cod`;
+  const idValue = item[idField.toUpperCase()] ?? item[idField] ?? '';
+  return String(idValue || '');
+}
+
+async function deleteByField(tableName: string, field: string, value: string): Promise<number> {
+  const { data, error } = await supabaseAdmin
+    .from(tableName)
+    .delete()
+    .eq(field, value)
+    .select(field);
+  if (error) throw error;
+  return (data || []).length;
+}
+
+async function updateByField(
+  tableName: string,
+  field: string,
+  value: string,
+  payload: Record<string, any>
+): Promise<Record<string, any> | null> {
+  const { data, error } = await supabaseAdmin
+    .from(tableName)
+    .update(payload)
+    .eq(field, value)
+    .select('*')
+    .maybeSingle();
+  if (error) throw error;
+  return data ? toUpperKeys(data as Record<string, any>) : null;
+}
+
+async function insertOne(tableName: string, payload: Record<string, any>): Promise<Record<string, any>> {
+  const { data, error } = await supabaseAdmin
+    .from(tableName)
+    .insert(payload)
+    .select('*')
+    .single();
+  if (error) throw error;
+  return toUpperKeys(data as Record<string, any>);
 }
 
 function applyFilter(items: Array<Record<string, any>>, filter: string): Array<Record<string, any>> {
@@ -634,28 +622,35 @@ export const getBrowseColumns = async (req: Request, res: Response): Promise<voi
   }
 };
 
-export const getBrowseItems = (req: Request, res: Response): void => {
-  const alias = String(req.params.alias || '').toUpperCase();
-  const page = Math.max(parseInt(String(req.query.page || '1'), 10) || 1, 1);
-  const pageSize = Math.max(parseInt(String(req.query.pageSize || '10'), 10) || 10, 1);
-  const filter = String(req.query.filter || '');
-  const order = String(req.query.$order || '');
+export const getBrowseItems = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const alias = String(req.params.alias || '').toUpperCase();
+    const page = Math.max(parseInt(String(req.query.page || '1'), 10) || 1, 1);
+    const pageSize = Math.max(parseInt(String(req.query.pageSize || '10'), 10) || 10, 1);
+    const filter = String(req.query.filter || '');
+    const order = String(req.query.$order || '');
 
-  let items = getAliasData(alias);
-  items = applyFilter(items, filter);
-  items = applyOrder(items, order);
+    let items = await fetchAliasRows(alias);
+    items = applyFilter(items, filter);
+    items = applyOrder(items, order);
 
-  const total = items.length;
-  const start = (page - 1) * pageSize;
-  const end = start + pageSize;
-  const pagedItems = items.slice(start, end);
-  const remainingRecords = Math.max(total - end, 0);
+    const total = items.length;
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    const pagedItems = items.slice(start, end);
+    const remainingRecords = Math.max(total - end, 0);
 
-  res.json({
-    hasNext: end < total,
-    remainingRecords,
-    items: pagedItems
-  });
+    res.json({
+      hasNext: end < total,
+      remainingRecords,
+      items: pagedItems
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      message: 'Error loading browse items from database',
+      detailedMessage: error.message
+    });
+  }
 };
 
 export const getStructAlias = async (req: Request, res: Response): Promise<void> => {
@@ -675,21 +670,28 @@ export const getStructAlias = async (req: Request, res: Response): Promise<void>
   }
 };
 
-export const getDictionaryData = (req: Request, res: Response): void => {
-  const alias = String(req.params.alias || '').toUpperCase();
-  const rawItem = String(req.params.item || '');
-  const payload = parseJsonFromPath(rawItem);
+export const getDictionaryData = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const alias = String(req.params.alias || '').toUpperCase();
+    const rawItem = String(req.params.item || '');
+    const payload = parseJsonFromPath(rawItem);
 
-  const positioned = payload?.item || payload || {};
-  const items = getAliasData(alias);
-  if (items.length === 0) {
-    res.json({});
-    return;
+    const positioned = payload?.item || payload || {};
+    const items = await fetchAliasRows(alias);
+    if (items.length === 0) {
+      res.json({});
+      return;
+    }
+
+    const positionedCode = resolveRecordId(alias, positioned);
+    const found = positionedCode ? items.find(item => resolveRecordId(alias, item) === positionedCode) : null;
+    res.json(found || items[0]);
+  } catch (error: any) {
+    res.status(500).json({
+      message: 'Error loading dictionary data from database',
+      detailedMessage: error.message
+    });
   }
-
-  const positionedCode = resolveRecordId(alias, positioned);
-  const found = positionedCode ? items.find(item => resolveRecordId(alias, item) === positionedCode) : null;
-  res.json(found || items[0]);
 };
 
 export const getDictionaryInitializer = async (req: Request, res: Response): Promise<void> => {
@@ -737,189 +739,275 @@ export const executeTrigger = (req: Request, res: Response): void => {
   res.json(body);
 };
 
-export const getLookup = (req: Request, res: Response): void => {
-  const table = String(req.params.ctabela || '').toUpperCase();
-  const filter = String(req.query.filter || '').toLowerCase();
+export const getLookup = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const table = String(req.params.ctabela || '').toUpperCase();
+    const filter = String(req.query.filter || '').toLowerCase();
 
-  if (table !== 'SA1' && table !== 'Z02') {
-    res.json([]);
-    return;
+    if (table !== 'SA1' && table !== 'Z02') {
+      res.json([]);
+      return;
+    }
+
+    const dbTable = table.toLowerCase();
+    const { data, error } = await supabaseAdmin.from(dbTable).select('*');
+    if (error) {
+      if (isMissingTableError(error)) {
+        res.json([]);
+        return;
+      }
+      throw error;
+    }
+
+    const rows = (data || []).map(row => toUpperKeys(row as Record<string, any>));
+    const filtered = rows.filter(item => !filter || Object.values(item).some(v => String(v).toLowerCase().includes(filter)));
+    if (table === 'Z02') {
+      res.json(filtered.map(item => ({ z02_cod: item.Z02_COD, z02_idped: item.Z02_IDPED })));
+      return;
+    }
+    res.json(filtered);
+  } catch (error: any) {
+    res.status(500).json({
+      message: 'Error loading lookup from database',
+      detailedMessage: error.message
+    });
   }
+};
 
-  if (table === 'SA1') {
-    const rows = mockStore.sa1.filter(item =>
-      !filter || Object.values(item).some(v => String(v).toLowerCase().includes(filter))
-    );
+export const getLookupById = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const table = String(req.params.ctabela || '').toUpperCase();
+    const id = String(req.params.id || '');
+
+    if (table !== 'SA1' && table !== 'Z02') {
+      res.json([]);
+      return;
+    }
+
+    const dbTable = table.toLowerCase();
+    const idField = table === 'SA1' ? 'a1_cod' : 'z02_cod';
+    const { data, error } = await supabaseAdmin.from(dbTable).select('*').eq(idField, id);
+    if (error) {
+      if (isMissingTableError(error)) {
+        res.json([]);
+        return;
+      }
+      throw error;
+    }
+    const rows = (data || []).map(row => toUpperKeys(row as Record<string, any>));
+    if (table === 'Z02') {
+      res.json(rows.map(row => ({ z02_cod: row.Z02_COD, z02_idped: row.Z02_IDPED })));
+      return;
+    }
     res.json(rows);
-    return;
-  }
-
-  const rows = mockStore.integratedOrders
-    .filter(item => !filter || String(item.Z02_COD).toLowerCase().includes(filter))
-    .map(item => ({
-      z02_cod: item.Z02_COD,
-      z02_idped: item.Z02_IDPED
-    }));
-  res.json(rows);
-};
-
-export const getLookupById = (req: Request, res: Response): void => {
-  const table = String(req.params.ctabela || '').toUpperCase();
-  const id = String(req.params.id || '');
-
-  if (table === 'SA1') {
-    const row = mockStore.sa1.find(item => item.a1_cod === id);
-    res.json(row ? [row] : []);
-    return;
-  }
-
-  if (table === 'Z02') {
-    const row = mockStore.integratedOrders.find(item => item.Z02_COD === id);
-    res.json(row ? [{ z02_cod: row.Z02_COD, z02_idped: row.Z02_IDPED }] : []);
-    return;
-  }
-
-  res.json([]);
-};
-
-export const postPlatforms = (req: Request, res: Response): void => {
-  const payload = normalizeBody(req.body);
-  const code = String(payload.Z10_COD || `PLAT${String(mockStore.platforms.length + 1).padStart(3, '0')}`);
-  const item = { ...payload, Z10_COD: code, Z10_DTALT: toDateYmd(nowIso()) };
-  mockStore.platforms.push(item);
-  res.status(201).json(item);
-};
-
-export const putPlatforms = (req: Request, res: Response): void => {
-  const id = String(req.params.id || '');
-  const payload = normalizeBody(req.body);
-  const idx = mockStore.platforms.findIndex(item => item.Z10_COD === id);
-  if (idx < 0) {
-    res.status(404).json({ message: 'Platform not found' });
-    return;
-  }
-  mockStore.platforms[idx] = { ...mockStore.platforms[idx], ...payload, Z10_COD: id, Z10_DTALT: toDateYmd(nowIso()) };
-  res.json(mockStore.platforms[idx]);
-};
-
-export const deletePlatforms = (req: Request, res: Response): void => {
-  const id = String(req.params.id || '');
-  const before = mockStore.platforms.length;
-  mockStore.platforms = mockStore.platforms.filter(item => item.Z10_COD !== id);
-  if (mockStore.platforms.length === before) {
-    res.status(404).json({ message: 'Platform not found' });
-    return;
-  }
-  res.status(204).send();
-};
-
-export const postShippingProgram = (req: Request, res: Response): void => {
-  const payload = normalizeBody(req.body);
-  const code = String(payload.Z11_COD || `ENV${String(mockStore.shippingPrograms.length + 1).padStart(3, '0')}`);
-  const item = { ...payload, Z11_COD: code };
-  mockStore.shippingPrograms.push(item);
-  res.status(201).json(item);
-};
-
-export const putShippingProgram = (req: Request, res: Response): void => {
-  const id = String(req.params.id || '');
-  const payload = normalizeBody(req.body);
-  const idx = mockStore.shippingPrograms.findIndex(item => item.Z11_COD === id);
-  if (idx < 0) {
-    res.status(404).json({ message: 'Shipping program not found' });
-    return;
-  }
-  mockStore.shippingPrograms[idx] = { ...mockStore.shippingPrograms[idx], ...payload, Z11_COD: id };
-  res.json(mockStore.shippingPrograms[idx]);
-};
-
-export const deleteShippingProgram = (req: Request, res: Response): void => {
-  const id = String(req.params.id || '');
-  const before = mockStore.shippingPrograms.length;
-  mockStore.shippingPrograms = mockStore.shippingPrograms.filter(item => item.Z11_COD !== id);
-  if (mockStore.shippingPrograms.length === before) {
-    res.status(404).json({ message: 'Shipping program not found' });
-    return;
-  }
-  res.status(204).send();
-};
-
-export const postMarketplacesAccounts = (req: Request, res: Response): void => {
-  const payload = normalizeBody(req.body);
-  const code = String(payload.Z00_COD || `ACC${String(mockStore.marketplacesAccounts.length + 1).padStart(3, '0')}`);
-  const item = { ...payload, Z00_COD: code };
-  mockStore.marketplacesAccounts.push(item);
-  res.status(201).json(item);
-};
-
-export const putMarketplacesAccounts = (req: Request, res: Response): void => {
-  const id = String(req.params.id || '');
-  const payload = normalizeBody(req.body);
-  const idx = mockStore.marketplacesAccounts.findIndex(item => item.Z00_COD === id || item.Z02_COD === id || item.Z04_COD === id);
-  if (idx < 0) {
-    res.status(404).json({ message: 'Marketplace account not found' });
-    return;
-  }
-  mockStore.marketplacesAccounts[idx] = { ...mockStore.marketplacesAccounts[idx], ...payload, Z00_COD: id };
-  res.json(mockStore.marketplacesAccounts[idx]);
-};
-
-export const deleteMarketplacesAccounts = (req: Request, res: Response): void => {
-  const id = String(req.params.id || '');
-  const before = mockStore.marketplacesAccounts.length;
-  mockStore.marketplacesAccounts = mockStore.marketplacesAccounts.filter(item => item.Z00_COD !== id);
-  if (mockStore.marketplacesAccounts.length === before) {
-    res.status(404).json({ message: 'Marketplace account not found' });
-    return;
-  }
-  res.status(204).send();
-};
-
-export const postProductXAccounts = (req: Request, res: Response): void => {
-  const payload = normalizeBody(req.body);
-  const base = { ...payload };
-  const items = Array.isArray(payload.ITENS) ? payload.ITENS : [];
-
-  if (items.length > 0) {
-    mockStore.productXAccounts = mockStore.productXAccounts.filter(item => item.Z01_PRDERP !== payload.Z01_PRDERP);
-    items.forEach((item: any, idx: number) => {
-      mockStore.productXAccounts.push({
-        ...base,
-        ...item,
-        Z01_COD: String(idx + 1)
-      });
+  } catch (error: any) {
+    res.status(500).json({
+      message: 'Error loading lookup by id from database',
+      detailedMessage: error.message
     });
-  } else {
-    mockStore.productXAccounts.push({
+  }
+};
+
+export const postPlatforms = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const payload = normalizeBody(req.body);
+    const code = String(payload.Z10_COD || generateCode(aliasCodePrefixMap.Z10));
+    const item = { ...payload, Z10_COD: code, Z10_DTALT: toDateYmd(nowIso()) };
+    const created = await insertOne('z10', toLowerKeys(item));
+    res.status(201).json(created);
+  } catch (error: any) {
+    res.status(500).json({ message: 'Error creating platform', detailedMessage: error.message });
+  }
+};
+
+export const putPlatforms = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = String(req.params.id || '');
+    const payload = normalizeBody(req.body);
+    const updated = await updateByField('z10', 'z10_cod', id, toLowerKeys({ ...payload, Z10_COD: id, Z10_DTALT: toDateYmd(nowIso()) }));
+    if (!updated) {
+      res.status(404).json({ message: 'Platform not found' });
+      return;
+    }
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ message: 'Error updating platform', detailedMessage: error.message });
+  }
+};
+
+export const deletePlatforms = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = String(req.params.id || '');
+    const deleted = await deleteByField('z10', 'z10_cod', id);
+    if (!deleted) {
+      res.status(404).json({ message: 'Platform not found' });
+      return;
+    }
+    res.status(204).send();
+  } catch (error: any) {
+    res.status(500).json({ message: 'Error deleting platform', detailedMessage: error.message });
+  }
+};
+
+export const postShippingProgram = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const payload = normalizeBody(req.body);
+    const code = String(payload.Z11_COD || generateCode(aliasCodePrefixMap.Z11));
+    const item = { ...payload, Z11_COD: code };
+    const created = await insertOne('z11', toLowerKeys(item));
+    res.status(201).json(created);
+  } catch (error: any) {
+    res.status(500).json({ message: 'Error creating shipping program', detailedMessage: error.message });
+  }
+};
+
+export const putShippingProgram = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = String(req.params.id || '');
+    const payload = normalizeBody(req.body);
+    const updated = await updateByField('z11', 'z11_cod', id, toLowerKeys({ ...payload, Z11_COD: id }));
+    if (!updated) {
+      res.status(404).json({ message: 'Shipping program not found' });
+      return;
+    }
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ message: 'Error updating shipping program', detailedMessage: error.message });
+  }
+};
+
+export const deleteShippingProgram = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = String(req.params.id || '');
+    const deleted = await deleteByField('z11', 'z11_cod', id);
+    if (!deleted) {
+      res.status(404).json({ message: 'Shipping program not found' });
+      return;
+    }
+    res.status(204).send();
+  } catch (error: any) {
+    res.status(500).json({ message: 'Error deleting shipping program', detailedMessage: error.message });
+  }
+};
+
+export const postMarketplacesAccounts = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const payload = normalizeBody(req.body);
+    const code = String(payload.Z00_COD || generateCode(aliasCodePrefixMap.Z00));
+    const item = { ...payload, Z00_COD: code };
+    const created = await insertOne('z00', toLowerKeys(item));
+    res.status(201).json(created);
+  } catch (error: any) {
+    res.status(500).json({ message: 'Error creating marketplace account', detailedMessage: error.message });
+  }
+};
+
+export const putMarketplacesAccounts = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = String(req.params.id || '');
+    const payload = normalizeBody(req.body);
+    const updated = await updateByField('z00', 'z00_cod', id, toLowerKeys({ ...payload, Z00_COD: id }));
+    if (!updated) {
+      res.status(404).json({ message: 'Marketplace account not found' });
+      return;
+    }
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ message: 'Error updating marketplace account', detailedMessage: error.message });
+  }
+};
+
+export const deleteMarketplacesAccounts = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = String(req.params.id || '');
+    const deleted = await deleteByField('z00', 'z00_cod', id);
+    if (!deleted) {
+      res.status(404).json({ message: 'Marketplace account not found' });
+      return;
+    }
+    res.status(204).send();
+  } catch (error: any) {
+    res.status(500).json({ message: 'Error deleting marketplace account', detailedMessage: error.message });
+  }
+};
+
+export const postProductXAccounts = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const payload = normalizeBody(req.body);
+    const base = { ...payload };
+    const items = Array.isArray(payload.ITENS) ? payload.ITENS : [];
+
+    if (items.length > 0) {
+      if (!payload.Z01_PRDERP) {
+        res.status(400).json({ message: 'Z01_PRDERP is required when ITENS is informed' });
+        return;
+      }
+      await supabaseAdmin.from('z01').delete().eq('z01_prderp', String(payload.Z01_PRDERP));
+      const rows = items.map((item: any, idx: number) => toLowerKeys({ ...base, ...item, Z01_COD: String(idx + 1) }));
+      const { error } = await supabaseAdmin.from('z01').insert(rows);
+      if (error) throw error;
+      res.status(201).json({ success: true });
+      return;
+    }
+
+    const row = toLowerKeys({
       ...base,
-      Z01_COD: String(mockStore.productXAccounts.length + 1)
+      Z01_COD: String(payload.Z01_COD || generateCode(aliasCodePrefixMap.Z01))
     });
+    const { error } = await supabaseAdmin.from('z01').insert(row);
+    if (error) throw error;
+    res.status(201).json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Error creating product x accounts', detailedMessage: error.message });
   }
-
-  res.status(201).json({ success: true });
 };
 
-export const getProductXAccountsById = (req: Request, res: Response): void => {
-  const id = String(req.params.id || '');
-  const items = mockStore.productXAccounts.filter(item => item.Z01_PRDERP === id);
-  res.json({ items });
-};
-
-export const deleteProductXAccounts = (req: Request, res: Response): void => {
-  const id = String(req.params.id || '');
-  const before = mockStore.productXAccounts.length;
-  mockStore.productXAccounts = mockStore.productXAccounts.filter(item => item.Z01_PRDERP !== id);
-  if (mockStore.productXAccounts.length === before) {
-    res.status(404).json({ message: 'Product x account not found' });
-    return;
+export const getProductXAccountsById = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = String(req.params.id || '');
+    const { data, error } = await supabaseAdmin.from('z01').select('*').eq('z01_prderp', id);
+    if (error) throw error;
+    res.json({ items: (data || []).map(row => toUpperKeys(row as Record<string, any>)) });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Error loading product x accounts', detailedMessage: error.message });
   }
-  res.status(204).send();
 };
 
-export const getIntegratedOrders = (req: Request, res: Response): void => {
-  const idPed = String(req.params.idPed || '');
-  const idInt = String(req.params.idInt || '');
-  const key = `${idPed}|${idInt}`;
-  const data = mockStore.integratedItems[key] || { Z03: [], Z05: [], Z06: [] };
-  res.json(data);
+export const deleteProductXAccounts = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = String(req.params.id || '');
+    const deleted = await deleteByField('z01', 'z01_prderp', id);
+    if (!deleted) {
+      res.status(404).json({ message: 'Product x account not found' });
+      return;
+    }
+    res.status(204).send();
+  } catch (error: any) {
+    res.status(500).json({ message: 'Error deleting product x account', detailedMessage: error.message });
+  }
+};
+
+export const getIntegratedOrders = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const idPed = String(req.params.idPed || '');
+    const idInt = String(req.params.idInt || '');
+
+    const [z03Res, z05Res, z06Res] = await Promise.all([
+      supabaseAdmin.from('z03').select('*').eq('z03_idped', idPed).eq('z03_idint', idInt),
+      supabaseAdmin.from('z05').select('*').eq('z05_idped', idPed).eq('z05_idint', idInt),
+      supabaseAdmin.from('z06').select('*').eq('z06_idped', idPed).eq('z06_idint', idInt)
+    ]);
+
+    if (z03Res.error && !isMissingTableError(z03Res.error)) throw z03Res.error;
+    if (z05Res.error && !isMissingTableError(z05Res.error)) throw z05Res.error;
+    if (z06Res.error && !isMissingTableError(z06Res.error)) throw z06Res.error;
+
+    res.json({
+      Z03: (z03Res.data || []).map(row => toUpperKeys(row as Record<string, any>)),
+      Z05: (z05Res.data || []).map(row => toUpperKeys(row as Record<string, any>)),
+      Z06: (z06Res.data || []).map(row => toUpperKeys(row as Record<string, any>))
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Error loading integrated orders', detailedMessage: error.message });
+  }
 };

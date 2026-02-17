@@ -286,7 +286,7 @@ async function loadRowsWithFallback<T>(
   for (const tableName of tableNames) {
     const { data, error } = await load(tableName);
     if (!error) return data || [];
-    if (error.code === '42P01') {
+    if (isMissingTableError(error)) {
       lastError = error;
       continue;
     }
@@ -295,12 +295,24 @@ async function loadRowsWithFallback<T>(
   throw lastError || new Error(`No compatible tables found: ${tableNames.join(', ')}`);
 }
 
+function isMissingTableError(error: any): boolean {
+  if (!error) return false;
+  const code = String(error.code || '').toUpperCase();
+  const message = String(error.message || '').toLowerCase();
+  return (
+    code === '42P01' ||
+    code === 'PGRST205' ||
+    message.includes('could not find the table') ||
+    message.includes('relation') && message.includes('does not exist')
+  );
+}
+
 async function resolveTableName(tableNames: string[]): Promise<string> {
   let lastError: any = null;
   for (const tableName of tableNames) {
     const { error } = await supabaseAdmin.from(tableName).select('*').limit(1);
     if (!error) return tableName;
-    if (error.code === '42P01') {
+    if (isMissingTableError(error)) {
       lastError = error;
       continue;
     }

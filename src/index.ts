@@ -5,6 +5,7 @@ import swaggerUi from 'swagger-ui-express';
 import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes';
 import userRoutes from './routes/userRoutes';
+import integrationMockRoutes from './routes/integrationMockRoutes';
 
 dotenv.config();
 
@@ -127,6 +128,8 @@ const swaggerSpec = swaggerJsdoc(swaggerOptions);
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/v1/isp', integrationMockRoutes);
+app.use('/app-root/api/v1/isp', integrationMockRoutes);
 
 // Swagger UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
